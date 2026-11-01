@@ -5,4 +5,8 @@
     <RootNamespace>Hwpx2Hwp.Core</RootNamespace>
     <AssemblyName>Hwpx2Hwp.Core</AssemblyName>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- 테스트가 internal 생성자로 쓰기 실패 스트림을 넣는다(RunLogTests X_Log_12) -->
+    <InternalsVisibleTo Include="Hwpx2Hwp.Core.Tests" />
+  </ItemGroup>
 </Project>

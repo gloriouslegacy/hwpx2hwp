@@ -2,13 +2,14 @@ using System.IO.Compression;
 using System.Text;
 using Hwpx2Hwp.Core.Batch;
 using Hwpx2Hwp.Core.Engine;
+using Hwpx2Hwp.Core.Logging;
 using Hwpx2Hwp.Core.Model;
 using Hwpx2Hwp.Core.Tests.Fakes;
 
 namespace Hwpx2Hwp.Core.Tests;
 
 /// <summary>
-/// F4 일괄 실행(T4.1)과 파일별 흐름(X_Batch). D-5. 가짜 엔진 + 임시 폴더의 합성 hwpx.
+/// F4 일괄 실행·취소(T4.1·T4.2), F5 실패 로그(T5.1)와 파일별 흐름(X_Batch). D-5. 가짜 엔진 + 임시 폴더의 합성 hwpx.
 /// 테스트마다 새 임시 폴더를 만들고 끝나면 지운다.
 /// </summary>
 public sealed class BatchRunnerTests : IDisposable
@@ -270,6 +271,100 @@ public sealed class BatchRunnerTests : IDisposable
         Assert.Contains("cancelled=true", log, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task T4_2_2번째_변환_중_취소하면_2번째까지_처리_나머지_Pending()
+    {
+        var items = MakeItems("a", "b", "c", "d", "e");
+        using var cts = new CancellationTokenSource();
+        var engine = new FakeConversionEngine { OnConvert = n => { if (n == 2) { cts.Cancel(); } } };
+
+        var (report, events) = await RunAsync(engine, items, ct: cts.Token);
+
+        Assert.Equal([items[0], items[1]], engine.Jobs.Select(j => j.Input));
+        Assert.Equal(2, report.Succeeded);
+        Assert.Equal(0, report.Failed);
+        Assert.Equal(3, report.Pending);
+        Assert.True(report.Cancelled);
+        Assert.Equal([1, 2], events.Where(e => e.State == JobState.Succeeded).Select(e => e.JobNumber));
+        Assert.DoesNotContain(events, e => e.JobNumber >= 3);
+
+        var lines = File.ReadAllLines(report.LogPath);
+        var skips = lines.Where(l => l.Contains("\tSKIP\t", StringComparison.Ordinal)).ToList();
+        Assert.Equal(3, skips.Count);
+        for (var i = 2; i < items.Count; i++)
+        {
+            Assert.Contains(skips, l => l.EndsWith($"SKIP\t#{i + 1:D4}\t{items[i].SourcePath}\t-\t취소됨", StringComparison.Ordinal));
+        }
+
+        Assert.EndsWith("\tEND\tsucceeded=2\tfailed=0\tpending=3\tcancelled=true", lines[^1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task T5_1_실패_2건이면_로그_FAIL_2줄에_경로와_이유_요약_개수_일치()
+    {
+        var items = new List<InputItem>
+        {
+            Item(MakeHwpx("a", PlainManifest)),
+            Item(MakeHwpx("locked", EncryptedManifest)),
+            Item(MakeHwpx("c", PlainManifest)),
+            Item(MakeHwpx("d", PlainManifest)),
+        };
+
+        // 엔진은 암호 파일을 받지 않으므로 2번째 변환 = c.
+        var engine = new FakeConversionEngine { FailAt = 2, FailureReason = FailureReason.SaveFailed };
+
+        var (report, _) = await RunAsync(engine, items);
+
+        Assert.Equal(2, report.Failed);
+        Assert.Equal(2, report.Failures.Count);
+        Assert.Equal(2, report.Succeeded);
+        Assert.Equal(items.Count, report.Succeeded + report.Failed + report.Pending);
+
+        var fails = File.ReadAllLines(report.LogPath).Where(l => l.Contains("\tFAIL\t", StringComparison.Ordinal)).ToList();
+        Assert.Equal(2, fails.Count);
+        Assert.Contains(fails, l => l.Contains(items[1].SourcePath, StringComparison.Ordinal)
+            && l.Contains(FailureReasonText.Get(FailureReason.Encrypted), StringComparison.Ordinal));
+        Assert.Contains(fails, l => l.Contains(items[2].SourcePath, StringComparison.Ordinal)
+            && l.Contains(FailureReasonText.Get(FailureReason.SaveFailed), StringComparison.Ordinal));
+        Assert.Equal([items[1].SourcePath, items[2].SourcePath], report.Failures.Select(f => f.SourcePath));
+    }
+
+    [Fact]
+    public async Task X_Batch_12_출력_하위_폴더_자리에_파일이_있으면_그_파일만_SaveFailed_나머지_계속()
+    {
+        var src = Path.Combine(_dir, "src");
+        Directory.CreateDirectory(Path.Combine(src, "sub"));
+        var items = new[] { Path.Combine("src", "a"), Path.Combine("src", "sub", "b"), Path.Combine("src", "c") }
+            .Select(n => new InputItem(MakeHwpx(n, PlainManifest), src))
+            .ToList();
+        var output = Path.Combine(_dir, "out");
+        Directory.CreateDirectory(output);
+        File.WriteAllText(Path.Combine(output, "sub"), "폴더 자리의 파일");
+        var engine = new FakeConversionEngine();
+
+        var (report, _) = await RunAsync(engine, items, options: Options with { OutputFolder = output });
+
+        Assert.Equal(2, report.Succeeded);
+        var failure = Assert.Single(report.Failures);
+        Assert.Equal(FailureReason.SaveFailed, failure.Reason);
+        Assert.Equal(items[1].SourcePath, failure.SourcePath);
+        Assert.Equal([items[0], items[2]], engine.Jobs.Select(j => j.Input));
+        Assert.Equal("폴더 자리의 파일", File.ReadAllText(Path.Combine(output, "sub")));
+    }
+
+    [Fact]
+    public async Task X_Batch_13_IProgress_가_던지면_RunAsync_로_전파되고_로그_마지막_줄은_END()
+    {
+        var items = MakeItems("a", "b", "c");
+        var runner = new BatchRunner(new FakeConversionEngine(), _logDir, _time);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => runner.RunAsync(items, Options, new ThrowingProgress(), CancellationToken.None));
+
+        var log = Assert.Single(Directory.GetFiles(_logDir));
+        Assert.Contains("\tEND\t", File.ReadAllLines(log)[^1], StringComparison.Ordinal);
+    }
+
     private async Task<(BatchReport Report, IReadOnlyList<BatchEvent> Events)> RunAsync(
         IConversionEngine engine, IReadOnlyList<InputItem> items, BatchOptions? options = null, CancellationToken ct = default)
     {
@@ -324,6 +419,12 @@ public sealed class BatchRunnerTests : IDisposable
                 return [.. _events];
             }
         }
+    }
+
+    /// <summary>보고마다 던지는 IProgress(호출자 progress 예외 전파 확인용).</summary>
+    private sealed class ThrowingProgress : IProgress<BatchEvent>
+    {
+        public void Report(BatchEvent value) => throw new InvalidOperationException("progress 실패");
     }
 
     /// <summary>StartAsync 동작만 주입하는 엔진(시작 예외·시작 중 취소 재현용). 변환은 항상 성공하고 횟수만 센다.</summary>

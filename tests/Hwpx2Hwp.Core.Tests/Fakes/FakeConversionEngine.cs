@@ -20,6 +20,12 @@ public sealed class FakeConversionEngine : IConversionEngine
     /// <summary>이 번째 변환에서 InvalidOperationException 을 던진다(1부터). null 이면 없음.</summary>
     public int? ThrowAt { get; init; }
 
+    /// <summary>
+    /// 변환마다 결과를 정하기 전에 변환 번호(1부터)로 부른다(예: N번째 변환 중에 취소). null 이면 없음.
+    /// 부른 뒤 받은 ct 가 취소 상태면 OperationCanceledException 을 던진다.
+    /// </summary>
+    public Action<int>? OnConvert { get; init; }
+
     /// <summary>값이 있으면 미설치로 시작한다(Available=false, 이 문구).</summary>
     public string? UnavailableMessage { get; init; }
 
@@ -52,6 +58,8 @@ public sealed class FakeConversionEngine : IConversionEngine
     {
         _jobs.Add(job);
         var number = _jobs.Count;
+        OnConvert?.Invoke(number);
+        ct.ThrowIfCancellationRequested();
 
         if (number == ThrowAt)
         {

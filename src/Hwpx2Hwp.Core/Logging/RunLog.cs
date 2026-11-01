@@ -1,11 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Text;
 using Hwpx2Hwp.Core.Model;
-
-// 테스트가 internal 생성자로 쓰기 실패 스트림을 넣는다(RunLogTests X_Log_12).
-[assembly: InternalsVisibleTo("Hwpx2Hwp.Core.Tests")]
 
 namespace Hwpx2Hwp.Core.Logging;
 
@@ -57,6 +53,8 @@ public sealed class RunLog : IDisposable
     /// <summary>
     /// logDir 를 만들고 <c>yyyyMMdd-HHmmss.log</c> 를 새로 만든다. 같은 이름이 있으면 <c>_1</c>, <c>_2</c> … 를 붙인다(기존 로그 덮어쓰기 금지).
     /// </summary>
+    /// <exception cref="IOException">폴더·파일을 만들 수 없을 때(경로가 파일과 겹침·디스크 오류 등).</exception>
+    /// <exception cref="UnauthorizedAccessException">폴더·파일을 만들 권한이 없을 때.</exception>
     public static RunLog Create(string logDir, TimeProvider time)
     {
         ArgumentNullException.ThrowIfNull(logDir);
