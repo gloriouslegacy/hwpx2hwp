@@ -72,7 +72,8 @@ public sealed record EngineStart(bool Available, string? UnavailableMessage, IRe
 - **late binding(`dynamic`)**. `Type.GetTypeFromProgID("HWPFrame.HwpObject")` 가 null 이면 미설치(T1.3). interop 어셈블리는 쓰지 않는다.
 - `dynamic` 은 `HwpSession.cs` 한 파일에만. 한/글 2014 에서 쓸 API: `XHwpWindows.Item(0).Visible=false`, `RegisterModule("FilePathCheckDLL", <값 이름>)`, `SetMessageBoxMode`, `Open(path, "HWPX", "forceopen:true;suspendpassword:true;versionwarning:false")`, `SaveAs(path, "HWP", "")`, `Clear(1)`, `Quit()`. 형식 문자열 매핑은 `HwpFormatMap.cs`(V3).
 - **STA**: `StaDispatcher` 가 `ApartmentState.STA` 전용 스레드 1개 + 작업 큐. 한/글 인스턴스는 그 스레드에서 첫 `StartAsync` 때 1번 만들고 `DisposeAsync`(앱 종료)까지 다시 쓴다(C4). Hwp.exe 는 out-of-proc 서버이고 이벤트를 받지 않으므로 메시지 루프는 두지 않는다.
-- 서버 사망(`RPC_E_SERVER_DIED`·`RPC_S_SERVER_UNAVAILABLE`) → 그 파일 `EngineCrashed`, 인스턴스 1회 재생성 후 계속. 재생성도 실패하면 남은 파일 전부 `EngineCrashed`.
+- 덮어쓰기 방지: SaveAs 는 같은 폴더 임시 이름에 하고 `File.Move(overwrite:false)` 로 옮긴다(존재 확인~저장 사이 틈 차단). 실패 때는 우리가 만든 임시 파일만 지운다.
+- 서버 사망(`RPC_E_SERVER_DIED`·`RPC_S_SERVER_UNAVAILABLE`, HRESULT 0x80010007·0x80010012·0x800706BA·0x80010108·0x800706BE) → 그 파일 `EngineCrashed`, 인스턴스 1회 재생성 후 계속. 재생성도 실패하면 남은 파일 전부 `EngineCrashed`.
 - 파일마다 저장 뒤 `Clear(1)`(변경 버림)로 닫아 원본 잠금을 푼다.
 - 파일별 시간 제한: **도입 조건: Windows 수동 시험에서 대화상자·멈춤이 재현되면**(그때 Hwp.exe 종료 + 재생성).
 
@@ -80,6 +81,7 @@ public sealed record EngineStart(bool Available, string? UnavailableMessage, IRe
 - exe 폴더(`AppContext.BaseDirectory`)에서 정해진 이름의 DLL 을 찾는다(이름 목록은 상수 1곳).
 - 레지스트리 범위: **`HKCU\Software\HNC\HwpAutomation\Modules` 의 문자열 값 1개**(값 이름 `FilePathCheckerModule`, 데이터 = DLL 전체 경로)만. 값이 이미 같으면 쓰지 않는다. HKLM·다른 키는 건드리지 않고 삭제하지 않는다.
 - 그 뒤 엔진 시작 때 `RegisterModule("FilePathCheckDLL", "FilePathCheckerModule")`. DLL 없음·쓰기 실패·RegisterModule false → Notice 1건, 변환은 계속.
+- 위험(수용): exe 폴더가 다른 사용자가 쓸 수 있는 위치면 같은 이름 DLL 이 보안 모듈로 등록되어 한/글에 로드될 수 있다 — 배포 안내로 대응, 서명 검증은 도입 조건: 실제 배포 경로가 공유 폴더일 때. 기존 값이 다른 DLL 경로면 덮어쓴다.
 
 ### D-8 App (지금 도입)
 - 디자이너 파일(`*.Designer.cs`·`.resx`) 미사용. 컨트롤 생성은 `MainFormLayout.cs`, 이벤트·흐름 연결은 `MainForm.cs`.
@@ -97,7 +99,7 @@ public sealed record EngineStart(bool Available, string? UnavailableMessage, IRe
   - 테스트: `dotnet test tests/Hwpx2Hwp.Core.Tests/Hwpx2Hwp.Core.Tests.csproj`
   - 전체 빌드: `dotnet build Hwpx2Hwp.sln`
   - 배포: `dotnet publish src/Hwpx2Hwp.App/Hwpx2Hwp.App.csproj -c Release -r win-x64 -o artifacts/publish` → `artifacts/publish/hwpx2hwp.exe` 하나를 Windows 로 복사.
-- 맥 자동: T1.4, T2.1~2.4, T3.1~3.5, T4.1, T4.2, T5.1, T6.2(가짜 엔진), 암호 사전 검사(합성 zip), 아키텍처 테스트. Windows 수동: T1.1, T1.2(실제 암호 문서), T1.3, T4.3, T6.1 — 체크리스트 `docs/test/windows-manual.md`.
+- 맥 자동: T1.4, T2.1~2.4, T3.1~3.5, T4.1, T4.2, T5.1, T6.2(가짜 엔진), 암호 사전 검사(합성 zip), 아키텍처 테스트. Windows 수동: T1.1, T1.2(실제 암호 문서), T1.3, T4.3, T6.1, X1(260자 경로)·X2(Hwp.exe 강제 종료)·X3(덮어쓰기 금지) — 체크리스트 `docs/test/windows-manual.md`.
 - HwpCom·App 테스트 프로젝트: **도입 조건: Windows PC 에서 `dotnet test` 를 돌릴 수 있게 될 때**(`tests/Hwpx2Hwp.HwpCom.Tests` net10.0-windows).
 
 ### D-10 승인 검사 (2026-10-21 승인 — 구현 첫 작업으로 설정)
@@ -143,5 +145,5 @@ public sealed record EngineStart(bool Available, string? UnavailableMessage, IRe
 ## 열린 문제
 1. 보안 모듈 DLL 파일 이름과 비트 수: Hwp.exe(한/글 2014)와 같은 비트여야 한다. 우리 exe(x64)와는 무관(out-of-proc). Windows 에서 확인.
 2. HWPX 암호 문서의 manifest 표기를 실제 샘플로 확인. 사전 검사가 못 잡으면 `OpenFailed` 로 나와 T1.2 가 어긋난다.
-3. 한/글 2014 에서 `Open` 형식 문자열 `"HWPX"`, 인자 `suspendpassword`·`versionwarning`, `SetMessageBoxMode` 지원 여부 Windows 확인.
+3. 한/글 2014 에서 `Open` 형식 문자열 `"HWPX"`, 인자 `suspendpassword`·`versionwarning`, `SetMessageBoxMode` 지원 여부 Windows 확인. `SetMessageBoxMode` 값(0x00224121)의 비트 의미 미확인.
 4. 260자 넘는 경로에서 `SaveAs` 동작 미확인 — 실패 시 `SaveFailed` 로 기록되는 것만 보장.

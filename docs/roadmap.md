@@ -10,7 +10,7 @@
 - 2e BatchRunner (F4 T4.1·T4.2) · 2f RunLog·FailureReasonText (F5) — 완료 2026-11-01
 - 완료 기준: F2·F3·F4·F5 의 자동 T 전부 통과
 
-## 3단계 HwpCom (맥 빌드, Windows 수동)
+## 3단계 HwpCom (맥 빌드, Windows 수동) — 완료 2026-11-01 (WSL 빌드·체크리스트 준비, Windows 수동 미확인)
 - 3a StaDispatcher·HwpSession·HwpFormatMap·HwpComEngine (F1) · 3b SecurityModule (F6)
 - 완료 기준: 맥 빌드 통과, docs/test/windows-manual.md 의 T1.x·T6.1 체크리스트 준비
 
