@@ -221,8 +221,20 @@ internal sealed class MainForm : Form
             return;
         }
 
-        var items = _collector.Items.ToList();
-        _lastEvents.Clear();
+        // 다시 [변환]하면 마지막 이벤트가 성공인 항목은 빼고 나머지(실패·대기)만 넘긴다(F4).
+        // 행 매핑은 InputItem 기준(_rows)이라 JobNumber 가 이번 실행 기준이어도 꼬이지 않는다.
+        var items = _collector.Items.Where(item => !IsSucceeded(item)).ToList();
+        if (items.Count == 0)
+        {
+            _ui.StatusLabel.Text = "변환할 파일이 없음(모두 성공)";
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            _lastEvents.Remove(item);
+        }
+
         RefreshList();
         _ui.Progress.Maximum = items.Count;
         _ui.Progress.Value = 0;
@@ -252,6 +264,9 @@ internal sealed class MainForm : Form
             CloseIfRequested();
         }
     }
+
+    private bool IsSucceeded(InputItem item) =>
+        _lastEvents.TryGetValue(item, out var ev) && ev.State == JobState.Succeeded;
 
     private void OnBatchEvent(BatchEvent ev)
     {
