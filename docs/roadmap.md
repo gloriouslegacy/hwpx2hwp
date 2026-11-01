@@ -23,3 +23,4 @@
 ## 5단계 배포 1.0.0 (F8, 2026-11-02 사용자 결정)
 - 5a 아이콘·버전(tools/make_icon.py, app.ico, csproj, 창 제목) · 5b 패키지 스크립트(tools/package.py → zip) · 5c GitHub Release v1.0.0(올리기 전 사용자 확인)
 - 완료 기준: T8.2 통과, Windows T8.1 사용자 확인
+- 2026-11-02: T8.2 통과, GitHub Release v1.0.0 공개. T8.1 은 창 제목·제목줄 아이콘만 확인(탐색기 아이콘·파일 속성·README 미확인)
