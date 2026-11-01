@@ -115,4 +115,17 @@ public sealed class InputCollectorTests : IDisposable
         var item = Assert.Single(collector.Items);
         Assert.Equal(new InputItem(file, folder), item);
     }
+
+    [Fact]
+    public void X_Collect_2_잘못된_형식_경로는_건너뛰고_나머지는_추가()
+    {
+        var single = Touch("single.hwpx");
+        var inFolder = Touch("in", "a.hwpx");
+        var folder = Path.Combine(_root, "in");
+        var collector = NewCollector();
+
+        collector.Add([single, Path.Combine(_root, "bad\0name.hwpx"), "bad\0folder", folder]);
+
+        Assert.Equal([new InputItem(single, null), new InputItem(inFolder, folder)], collector.Items);
+    }
 }

@@ -103,4 +103,25 @@ public sealed class OutputPathPlannerTests : IDisposable
 
         Assert.Equal(Under("a_1.hwp"), planner.Reserve(new InputItem(source, null)));
     }
+
+    [Fact]
+    public void X_Paths_3_이름이_점점으로_시작하는_하위_폴더는_정상_예약()
+    {
+        var source = Touch("in", "..foo", "a.hwpx");
+        var planner = new OutputPathPlanner(ConversionRoute.HwpxToHwp, Under("out"));
+
+        Assert.Equal(Under("out", "..foo", "a.hwp"), planner.Reserve(new InputItem(source, Under("in"))));
+    }
+
+    [Fact]
+    public void X_Paths_4_수집_뒤_기준_폴더가_사라져도_경로만_계산()
+    {
+        // Reserve 는 경로 계산만 하고 디스크를 확인하지 않으므로(문서화된 예외 없음) 기준 폴더가 없어도 예외가 없다.
+        var source = Touch("in", "sub", "a.hwpx");
+        var item = new InputItem(source, Under("in"));
+        Directory.Delete(Under("in"), recursive: true);
+        var planner = new OutputPathPlanner(ConversionRoute.HwpxToHwp, Under("out"));
+
+        Assert.Equal(Under("out", "sub", "a.hwp"), planner.Reserve(item));
+    }
 }

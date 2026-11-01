@@ -30,19 +30,28 @@ public sealed class InputCollector
     /// <summary>추가 순서대로의 수집 목록(읽기 전용).</summary>
     public IReadOnlyList<InputItem> Items { get; }
 
-    /// <summary>파일·폴더 경로를 넣는다. 대상 확장자가 아니거나 이미 있는 파일, 없는 경로는 조용히 건너뛴다.</summary>
+    /// <summary>파일·폴더 경로를 넣는다. 대상 확장자가 아니거나 이미 있는 파일, 없는·잘못된 형식·접근 불가 경로는 조용히 건너뛴다.</summary>
     public void Add(IEnumerable<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);
         foreach (var path in paths)
         {
-            if (File.Exists(path))
+            try
             {
-                TryAdd(path, null);
+                if (File.Exists(path))
+                {
+                    TryAdd(path, null);
+                }
+                else if (Directory.Exists(path))
+                {
+                    AddFolder(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)));
+                }
             }
-            else if (Directory.Exists(path))
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                or ArgumentException or NotSupportedException)
             {
-                AddFolder(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)));
+                // 복구: 잘못된 형식·너무 긴 경로, Exists 확인 뒤 사라졌거나 접근이 막힌 폴더는 그 항목만 건너뛴다.
+                // 이미 모은 항목은 유지하고 나머지 경로는 계속 추가한다(PathTooLongException 은 IOException).
             }
         }
     }
@@ -66,16 +75,9 @@ public sealed class InputCollector
 
     private void AddFolder(string folder)
     {
-        try
+        foreach (var file in Directory.EnumerateFiles(folder, "*", RecursiveOptions))
         {
-            foreach (var file in Directory.EnumerateFiles(folder, "*", RecursiveOptions))
-            {
-                TryAdd(file, folder);
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // 복구: Exists 확인 뒤 폴더가 사라졌거나 접근이 막히면 그 폴더만 건너뛴다. 이미 모은 항목은 유지한다.
+            TryAdd(file, folder);
         }
     }
 

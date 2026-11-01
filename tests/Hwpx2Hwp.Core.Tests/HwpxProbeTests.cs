@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text;
 using Hwpx2Hwp.Core.Probe;
@@ -190,5 +191,45 @@ public sealed class HwpxProbeTests : IDisposable
 
         var ex = Assert.Throws<FileNotFoundException>(() => HwpxProbe.Inspect(path));
         Assert.IsAssignableFrom<IOException>(ex);
+    }
+
+    [Fact]
+    public void X_Probe_13_중앙_디렉터리_크기를_크게_위조한_manifest_는_NotHwpx()
+    {
+        var path = MakeZip("l.hwpx", PlainManifest);
+        ForgeCentralUncompressedSize(path, "META-INF/manifest.xml", 0x7FFF_FFFF);
+
+        Assert.Equal(ProbeResult.NotHwpx, HwpxProbe.Inspect(path));
+    }
+
+    [Fact]
+    public void X_Probe_14_역슬래시_manifest_이름도_인식()
+    {
+        var path = MakeZipWithEntries(
+            "m.hwpx",
+            ("mimetype", "application/hwp+zip"),
+            ("META-INF\\manifest.xml", EncryptedManifest));
+
+        Assert.Equal(ProbeResult.Encrypted, HwpxProbe.Inspect(path));
+    }
+
+    // 중앙 디렉터리 항목(시그니처 PK\1\2)의 압축 전 크기(오프셋 24, 4바이트)만 바꾼다. 실제 데이터는 그대로다.
+    private static void ForgeCentralUncompressedSize(string path, string entryName, uint size)
+    {
+        var bytes = File.ReadAllBytes(path);
+        var name = Encoding.UTF8.GetBytes(entryName);
+        for (var i = 0; i + 46 + name.Length <= bytes.Length; i++)
+        {
+            if (BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(i)) == 0x02014B50
+                && BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(i + 28)) == name.Length
+                && bytes.AsSpan(i + 46, name.Length).SequenceEqual(name))
+            {
+                BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(i + 24), size);
+                File.WriteAllBytes(path, bytes);
+                return;
+            }
+        }
+
+        throw new InvalidOperationException($"중앙 디렉터리 항목을 찾지 못했다: {entryName}");
     }
 }

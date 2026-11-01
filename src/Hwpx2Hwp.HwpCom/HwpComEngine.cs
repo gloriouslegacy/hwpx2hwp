@@ -109,15 +109,26 @@ public sealed class HwpComEngine : IConversionEngine
         }
     }
 
+    /// <summary>
+    /// 시작 경계: 동기 예외(ProgID 조회 실패, Dispose 경합으로 큐에 못 넣음 등)도 던지지 않고 시작 실패 결과로 바꾼다.
+    /// 실패 결과도 성공과 같이 _start 에 캐시한다 — 실제 시작은 엔진 수명에 1회이고, 이후 StartAsync 는 같은 결과를 돌려준다.
+    /// </summary>
     private Task<EngineStart> StartCoreAsync()
     {
-        var hwpType = Type.GetTypeFromProgID(ProgId);
-        if (hwpType is null)
+        try
         {
-            return Task.FromResult(new EngineStart(false, NotInstalledMessage, []));
-        }
+            var hwpType = Type.GetTypeFromProgID(ProgId);
+            if (hwpType is null)
+            {
+                return Task.FromResult(new EngineStart(false, NotInstalledMessage, []));
+            }
 
-        return _sta.InvokeAsync(() => StartOnSta(hwpType));
+            return _sta.InvokeAsync(() => StartOnSta(hwpType));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(new EngineStart(false, $"{CreateFailedMessage} ({Describe(ex)})", []));
+        }
     }
 
     private EngineStart StartOnSta(Type hwpType)
@@ -140,7 +151,19 @@ public sealed class HwpComEngine : IConversionEngine
     /// <summary>레지스트리 등록 + RegisterModule. 안내는 합쳐서 최대 1건(없으면 null).</summary>
     private string? RegisterSecurityModule(HwpSession session)
     {
-        if (!SecurityModule.TryRegister(_exeDir, out var registryNotice))
+        bool registered;
+        string? registryNotice;
+        try
+        {
+            registered = SecurityModule.TryRegister(_exeDir, out registryNotice);
+        }
+        catch (Exception)
+        {
+            // 등록 실패는 변환을 막지 않는다(F6): 예상 밖 예외도 안내 1건으로 번역.
+            return ApprovalPopupNotice;
+        }
+
+        if (!registered)
         {
             return registryNotice ?? ApprovalPopupNotice;
         }
@@ -310,9 +333,9 @@ public sealed class HwpComEngine : IConversionEngine
         {
             File.Move(temp, output, overwrite: false);
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // 확인~저장 틈에 대상이 생겼으면 "이미 있음", 그 밖의 IO 실패(잠금 등)는 원문을 남긴다.
+            // 확인~저장 틈에 대상이 생겼으면 "이미 있음", 그 밖의 IO·권한 실패(잠금·접근 거부 등)는 원문을 남긴다.
             var detail = clearDetail is null ? Describe(ex) : $"{Describe(ex)}; {clearDetail}";
             return ConversionOutcome.Failure(FailureReason.SaveFailed, OutputExists(output) ? "출력 파일이 이미 있음" : detail);
         }

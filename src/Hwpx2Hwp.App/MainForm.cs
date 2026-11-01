@@ -151,15 +151,25 @@ internal sealed class MainForm : Form
         _collecting = true;
         UpdateControls();
         _ui.StatusLabel.Text = "파일을 모으는 중…";
+        var skipped = false;
         try
         {
             await Task.Run(() => _collector.Add(paths));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException
+                                       or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            // 복구(방어선): 이상한 경로 하나로 앱이 crash 처리되지 않게, 그때까지 모은 목록을 두고 계속한다.
+            // PathTooLongException 은 IOException 에 포함된다. 경로 문자열은 기록하지 않는다.
+            Trace.TraceWarning("collect skipped unreadable path: type={0}", ex.GetType().Name);
+            skipped = true;
         }
         finally
         {
             _collecting = false;
             RefreshList();
-            _ui.StatusLabel.Text = string.Format(CultureInfo.CurrentCulture, "목록 {0}개", _collector.Items.Count);
+            _ui.StatusLabel.Text = string.Format(CultureInfo.CurrentCulture, "목록 {0}개", _collector.Items.Count)
+                + (skipped ? " — 읽을 수 없는 경로가 있어 건너뜀" : string.Empty);
             UpdateControls();
             CloseIfRequested();
         }
@@ -272,7 +282,9 @@ internal sealed class MainForm : Form
         }
 
         _ui.StatusLabel.Text = summary;
-        if (report.Notices.Count > 0)
+
+        // 닫기를 요청해 취소한 경우에는 안내 창을 띄우지 않고 닫는다(안내는 로그에 이미 있다).
+        if (report.Notices.Count > 0 && !_closeRequested)
         {
             MessageBox.Show(this, string.Join("\n\n", report.Notices), Caption,
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
