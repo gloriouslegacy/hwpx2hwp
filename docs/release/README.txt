@@ -31,4 +31,4 @@ hwpx 문서를 hwp 문서로 한꺼번에 바꿔 주는 Windows 프로그램입�
 - 로그 위치: %LOCALAPPDATA%\hwpx2hwp\logs\
 - 다운로드 폴더처럼 여러 사람이 파일을 넣을 수 있는 폴더가 아닌, 본인만 쓰는 폴더에 두고 실행하세요.
 
-문의·소스: https://github.com/gloriouslegacy/hwpxTohwp
+문의·소스: https://github.com/gloriouslegacy/hwpx2hwp
