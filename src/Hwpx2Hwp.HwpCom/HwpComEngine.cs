@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Hwpx2Hwp.Core.Engine;
@@ -127,6 +128,7 @@ public sealed class HwpComEngine : IConversionEngine
         }
         catch (Exception ex)
         {
+            Trace.TraceWarning("engine start failed: type={0}", ex.GetType().Name);
             return Task.FromResult(new EngineStart(false, $"{CreateFailedMessage} ({Describe(ex)})", []));
         }
     }
@@ -157,9 +159,10 @@ public sealed class HwpComEngine : IConversionEngine
         {
             registered = SecurityModule.TryRegister(_exeDir, out registryNotice);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // 등록 실패는 변환을 막지 않는다(F6): 예상 밖 예외도 안내 1건으로 번역.
+            Trace.TraceWarning("security module registry failed: type={0}", ex.GetType().Name);
             return ApprovalPopupNotice;
         }
 

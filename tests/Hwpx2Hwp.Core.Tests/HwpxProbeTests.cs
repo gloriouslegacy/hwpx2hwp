@@ -210,6 +210,14 @@ public sealed class HwpxProbeTests : IDisposable
             ("mimetype", "application/hwp+zip"),
             ("META-INF\\manifest.xml", EncryptedManifest));
 
+        // 전제: zip 안의 항목 이름이 실제로 역슬래시다(CreateEntry 가 '/' 로 바꾸지 않았다).
+        var rawName = Encoding.UTF8.GetBytes("META-INF\\manifest.xml");
+        Assert.True(File.ReadAllBytes(path).AsSpan().IndexOf(rawName) >= 0);
+        using (var zip = ZipFile.OpenRead(path))
+        {
+            Assert.Contains(zip.Entries, e => e.FullName == "META-INF\\manifest.xml");
+        }
+
         Assert.Equal(ProbeResult.Encrypted, HwpxProbe.Inspect(path));
     }
 
