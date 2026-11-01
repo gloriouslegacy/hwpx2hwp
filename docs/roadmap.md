@@ -14,6 +14,6 @@
 - 3a StaDispatcher·HwpSession·HwpFormatMap·HwpComEngine (F1) · 3b SecurityModule (F6)
 - 완료 기준: 맥 빌드 통과, docs/test/windows-manual.md 의 T1.x·T6.1 체크리스트 준비
 
-## 4단계 App·배포
+## 4단계 App·배포 — 구현 완료 2026-11-01 (WSL win-x64 publish 성공 → hwpx2hwp.exe 1개 약 52MB, Windows 수동 체크리스트 사용자 확인 대기)
 - MainFormLayout·MainForm·Program, publish 로 hwpx2hwp.exe 생성
 - 완료 기준: win-x64 publish 성공, Windows 수동 T4.3 포함 전체 체크리스트를 사용자가 확인

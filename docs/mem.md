@@ -1,12 +1,13 @@
-# 세션 메모 (갱신 2026-11-01 · 2b~2d 커밋 기준 — 이 메모와 같은 커밋, origin/main 푸시)
+# 세션 메모 (갱신 2026-11-01 · 로드맵 2~4단계 구현 완료 — 이 메모와 같은 커밋, origin/main 푸시)
 ## 끝낸 것 (최근)
-- 2a 커밋·푸시(16a4738) — git log 참고. WSL 개발 환경(~/.dotnet SDK 10.0.402) 추가
-- 2b InputCollector·2c OutputPathPlanner·2d HwpxProbe + 보강 r2(링크 미추적·출력 폴더 밖 거부·manifest 1MiB 상한·이름 변형/중복 NotHwpx). 빌드 경고 0, 테스트 36/36, reviewer·security-reviewer 높음 0
-- spec F2 에 T2.5·링크/숨김 미추적 줄 추가. gate-auditor log → docs/issue/agent-issue.md 2건(패키지 쪽 제안)
+- 2단계 Core 완료: BatchRunner·RunLog·FailureReasonText·AppPaths, T4.1·T4.2·T5.1 + X 항목. 테스트 71/71
+- 3단계 HwpCom: StaDispatcher·HwpSession·HwpFormatMap·HwpComEngine(임시 이름 저장→File.Move 덮어쓰기 차단, 사망 HRESULT 5종)·SecurityModule(HKCU 값 1개)
+- 4단계 App: MainFormLayout·MainForm·Program(crash 로그·종료 시 엔진 정리). WSL win-x64 publish → hwpx2hwp.exe 1개(약 52MB, 레포 밖 scratchpad)
+- 모든 발주 reviewer·security-reviewer 높음 0. windows-manual.md 에 X2(Hwp.exe 강제 종료)·X3(덮어쓰기) 추가, baseline D-6·D-7 위험 기록
 ## 열린 것
-- 2e BatchRunner 발주에 넣을 것: 저장 직전 출력 존재 재확인(TOCTOU) · Probe 의 IOException·UnauthorizedAccessException 을 파일 실패로 번역 · 가짜 엔진 ct 처리(T4.2)·FailAt 단일값 · Add 는 UI 밖 스레드에서
-- 낮음 미처리: `..foo` 폴더 회귀 테스트·Length 위조 zip·`\` manifest 테스트·루트 폴더 소실 테스트·EngineContractTests 클래스 단위 CA1859 억제
-- Windows 확인 대기: baseline 열린 문제 1~4(암호 manifest 형식 포함) · 정션 동작 · 1단계 reviewer 낮음 3건
+- Windows 수동 전부 미확인: T1.1~T1.3·T4.3·T6.1·X1~X3, 체크리스트 "확인할 사실" 15행(SetMessageBoxMode 0x00224121·Open 인자·반환형·보안 DLL 이름·사망 HRESULT·.tmp.hwp 잔존)
+- 결정 대기: 변환 뒤 다시 [변환]하면 이미 성공한 파일도 다시 변환(덮어쓰기는 없고 a_1.hwp 생성) — 그대로 둘지
+- 낮음 남음: RegisterModule 감싸기 catch 로그 없음, Notices 가 실행마다 다시 뜰 수 있음, BatchRunner.RunAsync 예외 문서에 UnauthorizedAccessException 누락, crash 중 RunLog ERROR 줄 미구현(D-11)
 ## 다음에
-- 2e BatchRunner(F4 T4.1·T4.2, JobState·BatchReport 포함) → 2f RunLog·FailureReasonText(F5)
-- 발주 Note: WSL dotnet 실행법, Spec 은 docs/spec 경로 필수(lessons)
+- 사용자가 Windows 에서 체크리스트 실행 → 결과로 열린 문제 1~4 확정·상수 수정
+- 첫 배포: `dotnet publish src/Hwpx2Hwp.App/Hwpx2Hwp.App.csproj -c Release -r win-x64 -o artifacts/publish`
