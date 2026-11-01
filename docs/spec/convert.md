@@ -44,6 +44,13 @@
 완료 기준: DLL이 있으면 승인 팝업 없이 변환되고, 없으면 안내 뒤 변환이 계속된다.
 테스트: T6.1 DLL 있음(수동·Windows) / T6.2 DLL 없음 → 안내 후 계속(자동, 가짜 엔진)
 
+## F7 중복 실행 차단
+조건: 사용자 결정 2026-11-02 (Windows 테스트 중 두 창이 동시에 뜸)
+- 같은 Windows 사용자 세션에서 hwpx2hwp 는 하나만 실행된다.
+- 이미 실행 중일 때 다시 실행하면 새 창을 띄우지 않고 안내도 없이, 기존 창을 앞으로 가져오고(최소화돼 있으면 복원) 바로 종료한다. 기존 창을 못 찾으면 그냥 종료한다.
+완료 기준: 실행 중에 exe 를 다시 실행해도 창은 하나뿐이고, 기존 창이 앞으로 온다.
+테스트: T7.1 실행 중 다시 실행 → 새 창 없음, 기존 창 앞으로·최소화 복원(수동·Windows)
+
 인터페이스 (docs/design/baseline.md):
 - F1 HwpCom `HwpComEngine.Create(exeDir)` → Core `IConversionEngine` · 암호 사전 검사 Core `HwpxProbe.Inspect`
 - F2 Core `InputCollector` · F3 Core `OutputPathPlanner.Reserve` · F4 Core `BatchRunner.RunAsync` · F5 Core `RunLog.Create`·`AppPaths.LogDirectory`

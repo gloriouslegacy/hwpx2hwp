@@ -16,4 +16,5 @@
 
 ## 4단계 App·배포 — 구현 완료 2026-11-01 (WSL win-x64 publish 성공 → hwpx2hwp.exe 1개 약 52MB, Windows 수동 체크리스트 사용자 확인 대기)
 - MainFormLayout·MainForm·Program, publish 로 hwpx2hwp.exe 생성
+- 4c 중복 실행 차단 (F7, 2026-11-02 사용자 결정, 수동 T7.1) — 구현 완료
 - 완료 기준: win-x64 publish 성공, Windows 수동 T4.3 포함 전체 체크리스트를 사용자가 확인

@@ -20,9 +20,20 @@ internal static class Program
     /// <summary>프로세스가 죽을 때 처리기가 정리할 엔진. Main 이 만든 직후 넣는다.</summary>
     private static HwpComEngine? s_engine;
 
+    /// <summary>F7 단일 실행 Mutex. 정적 필드로 잡아 프로세스가 끝날 때까지 GC 로 해제되지 않게 한다.</summary>
+    private static Mutex? s_instance;
+
     [STAThread]
     private static void Main()
     {
+        // F7: 다른 무엇(예외 처리기·Application 초기화·엔진·로그)보다 먼저 판정한다.
+        s_instance = SingleInstance.TryAcquire();
+        if (s_instance is null)
+        {
+            SingleInstance.ActivateExisting();
+            return;
+        }
+
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException += (_, e) => ReportCrash("ThreadException", e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => OnUnhandledException(e);
