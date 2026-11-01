@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Hwpx2Hwp.App;
 
 /// <summary>
@@ -8,6 +10,36 @@ internal sealed class MainFormLayout
 {
     /// <summary>목록 열 너비(96 DPI 논리 단위): 원본 파일 / 상태 / 결과.</summary>
     private static readonly int[] LogicalColumnWidths = [360, 70, 360];
+
+    /// <summary>csproj 의 EmbeddedResource LogicalName 과 같아야 한다.</summary>
+    private const string IconResourceName = "Hwpx2Hwp.App.app.ico";
+
+    /// <summary>
+    /// F8: 창 제목 `hwpx2hwp 1.0.0`(버전은 csproj Version 에서 온 어셈블리 버전 3자리)과
+    /// 창·작업 표시줄 아이콘(임베디드 app.ico — 단일 파일 publish 에서도 어셈블리 안에 있다)을 붙인다.
+    /// 아이콘을 못 읽으면 예외 없이 기본 아이콘으로 둔다.
+    /// </summary>
+    public static void ApplyTitleAndIcon(Form form)
+    {
+        var assembly = typeof(MainFormLayout).Assembly;
+        form.Text = $"hwpx2hwp {assembly.GetName().Version?.ToString(3)}";
+        try
+        {
+            using var stream = assembly.GetManifestResourceStream(IconResourceName);
+            if (stream is null)
+            {
+                Trace.TraceWarning("app icon: resource missing name={0}", IconResourceName);
+                return;
+            }
+
+            form.Icon = new Icon(stream);
+        }
+        catch (Exception ex)
+        {
+            // 복구: 아이콘은 꾸밈이라 기본 아이콘으로 계속한다
+            Trace.TraceWarning("app icon: load failed type={0} message={1}", ex.GetType().Name, ex.Message);
+        }
+    }
 
     public MainFormLayout()
     {

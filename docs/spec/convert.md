@@ -51,6 +51,15 @@
 완료 기준: 실행 중에 exe 를 다시 실행해도 창은 하나뿐이고, 기존 창이 앞으로 온다.
 테스트: T7.1 실행 중 다시 실행 → 새 창 없음, 기존 창 앞으로·최소화 복원(수동·Windows)
 
+## F8 배포 (아이콘·버전·배포 묶음)
+조건: 사용자 결정 2026-11-02
+- 아이콘: 파란 문서 위에 흰 오른쪽 화살표, 문서 아래에 'HWP' 글자. 16·24·32·48·64·256px 를 담은 .ico 하나를 exe 에 넣고, 창 제목줄·작업 표시줄에도 같은 아이콘을 쓴다. .ico 는 레포의 생성 스크립트(Python 표준 라이브러리만)로 다시 만들 수 있다.
+- 버전 1.0.0: exe 파일 속성(제품 버전·파일 버전)에 들어가고, 창 제목은 `hwpx2hwp 1.0.0` 이다.
+- 배포 묶음: `artifacts/hwpx2hwp-1.0.0-win-x64.zip` 안에 `hwpx2hwp.exe` 와 `README.txt`(docs/release/README.txt 를 UTF-8 BOM·CRLF 로) 두 개만 넣는다. publish 와 압축을 레포의 스크립트 한 번으로 한다. 기존 zip 은 덮어쓰지 않고 멈춘다.
+- GitHub Release `v1.0.0` 에 zip 을 올린다. 올리기 직전 사용자에게 확인한다.
+완료 기준: zip 을 풀어 exe 를 실행하면 아이콘과 버전이 보이고 변환이 된다.
+테스트: T8.1 아이콘·버전 표시(수동·Windows) / T8.2 패키지 스크립트 결과 zip 에 exe·README.txt 두 개만 있음(WSL 확인)
+
 인터페이스 (docs/design/baseline.md):
 - F1 HwpCom `HwpComEngine.Create(exeDir)` → Core `IConversionEngine` · 암호 사전 검사 Core `HwpxProbe.Inspect`
 - F2 Core `InputCollector` · F3 Core `OutputPathPlanner.Reserve` · F4 Core `BatchRunner.RunAsync` · F5 Core `RunLog.Create`·`AppPaths.LogDirectory`

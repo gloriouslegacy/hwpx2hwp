@@ -13,3 +13,4 @@ docs/map.md
 .DS_Store
 # Claude Orchestration 로컬 파생물(커밋하지 않음, 훅이 자동 추가)
 docs/issue/dispatch-log*.md
+__pycache__/

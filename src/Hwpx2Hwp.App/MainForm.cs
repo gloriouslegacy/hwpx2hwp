@@ -35,7 +35,7 @@ internal sealed class MainForm : Form
         _runner = runner;
         _engineName = engineName;
 
-        Text = Caption;
+        MainFormLayout.ApplyTitleAndIcon(this);
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScaleDimensions = new SizeF(96F, 96F);
         ClientSize = new Size(840, 520);
